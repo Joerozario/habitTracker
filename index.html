@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Habit Tracker</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 20px;
+        }
+
+        h1 {
+            color: #d34836;
+            /* Google Plus Red */
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .active {
+            display: block;
+        }
+
+        h2 {
+            color: #d34836;
+            /* Google Plus Red */
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        input[type="date"],
+        input[type="month"],
+        input[type="text"] {
+            padding: 12px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 16px;
+        }
+
+        button {
+            background-color: #d34836;
+            /* Google Plus Red */
+            color: #fff;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #b3362a;
+            /* Darker shade for hover */
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 15px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #d34836;
+            /* Google Plus Red */
+            color: #fff;
+        }
+
+        .tab-buttons {
+            display: flex;
+            /* Use flexbox to ensure buttons stay in a row */
+            overflow-x: auto;
+            /* Add horizontal scroll if necessary */
+        }
+
+        .tab-button {
+            background-color: #d34836;
+            /* Google Plus Red */
+            color: #fff;
+            padding: 15px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-right: 10px;
+            font-size: 16px;
+            margin-right: 10px;
+            font-size: 16px;
+        }
+
+        /* Add this to your existing CSS */
+
+        /* Add this to your existing CSS */
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 80px;
+            /* Increased width for better visibility of text */
+            height: 40px;
+            /* Adjusted height for better visibility */
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            /* Gray background when unchecked */
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 20px;
+            /* Increased border-radius for curvy edges */
+        }
+
+        .slider:before {
+            content: "Nope";
+            /* Text inside when checked */
+            position: absolute;
+            height: 40px;
+            width: 40px;
+            left: 0;
+            bottom: 0;
+            background-color: white;
+            -webkit-transition: .4s;
+            transition: .4s;
+            border-radius: 50%;
+            /* Curvy edges */
+            text-align: center;
+            line-height: 40px;
+            color: red;
+            /* Green color */
+            font-size: 12px;
+            /* Adjusted font size */
+        }
+
+        input:checked+.slider {
+            background-color: #4CAF50;
+            /* Green background when checked */
+        }
+
+        input:checked+.slider:before {
+            -webkit-transform: translateX(40px);
+            -ms-transform: translateX(40px);
+            transform: translateX(40px);
+
+            content: "Done";
+            /* Text inside */
+
+            font-size: 12px;
+            /* Adjusted font size */
+            color: green;
+            /* Text color when checked */
+        }
+
+
+
+        /* Add your own custom styles as needed */
+    </style>
+
+</head>
+
+<body>
+    <h1>Habit Tracker</h1>
+
+    <!-- Tab buttons -->
+    <div class="tab-buttons">
+        <button id="b-trackTab" onclick="showTab('trackTab')" class="tab-button">Track</button>
+        <button id="b-viewTab" onclick="showTab('viewTab')" class="tab-button">View Your Progress</button>
+        <button id="b-settings" onclick="showTab('settings')" class="tab-button">Settings</button>
+    </div>
+
+    <div id="trackTab" class="tab-content active">
+        <h2>Track Your Habits</h2>
+
+        <!-- Date control with today as default -->
+        <label for="trackDate">Select Date:</label>
+        <input type="date" id="trackDate" value="" />
+
+        <table id="habitTable">
+            <thead>
+                <tr>
+                    <th>Habit</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="habitTableBody"></tbody>
+        </table>
+    </div>
+    <!-- View Habits Tab -->
+    <div id="viewTab" class="tab-content">
+        <h2>View Your Actions</h2>
+        <label>Select Month:</label>
+        <input type="month" id="monthSelector">
+        <button onclick="viewHabits(false)">View Monthly</button>
+        <button onclick="viewHabits(true)">View Year</button>
+        <div id="DynmicHtmlResultTables">
+
+        </div>
+
+    </div>
+    <!-- Settings Tab -->
+    <div id="settings" class="tab-content">
+        <!-- Add a new habit -->
+        <h2>Settings</h2>
+        <label for="newHabit">New Habit:</label>
+        <input type="text" id="newHabit" placeholder="Enter habit name">
+        <button onclick="addNewHabit()">Add new habit</button>
+
+        <!-- Clear all data button -->
+        <button onclick="clearAllData()">Clear All Data</button>
+    </div>
+    <script>
+        const dbName = 'habitDatabase';
+        const habitMetadataStoreName = 'habitMetadataObjectStore';
+        const habitDailyStoreName = 'habitDetailsObjectStore';
+        var isDefalutDataLoaded = false;
+        var habitDailyDataList = [];
+        var habitMetadataList = [];
+        let db;
+        const openDBRequest = indexedDB.open(dbName, 7);
+
+        openDBRequest.onsuccess = function (event) {
+            db = event.target.result;
+            loadInitialData();
+        };
+        openDBRequest.onupgradeneeded = function (event) {
+            db = event.target.result;
+            // Check if the object store to be removed exists
+            if (db.objectStoreNames.contains(habitDailyStoreName)) {
+                db.deleteObjectStore(habitDailyStoreName);
+            }
+            if (db.objectStoreNames.contains(habitMetadataStoreName)) {
+                db.deleteObjectStore(habitMetadataStoreName);
+            }
+            const habitMetadataStore = db.createObjectStore(habitMetadataStoreName, { keyPath: 'id', autoIncrement: true });
+            const habitDailyStore = db.createObjectStore(habitDailyStoreName, { keyPath: 'id', autoIncrement: true });
+        };
+        function loadInitialData() {
+            loadHabitsMetaData();
+            loadHabitsData();
+            isDefalutDataLoaded = true;
+        }
+
+        function addNewHabit() {
+            const newHabitInput = document.getElementById('newHabit');
+            const newHabitName = newHabitInput.value.trim();
+            if (!newHabitName) {
+                alert('Please enter a habit name.');
+                return;
+            }
+            const newHabitMeta = {
+                date: new Date(),
+                name: newHabitName,
+            };
+            const habitMetadataStoreTransaction = db.transaction(habitMetadataStoreName, 'readwrite');
+            const habitMetaStore = habitMetadataStoreTransaction.objectStore(habitMetadataStoreName);
+            const habitId = habitMetaStore.add(newHabitMeta);
+            Promise.all([
+                habitMetadataStoreTransaction.complete,
+            ]).then(() => {
+                loadHabitsMetaData();
+                alert('Habit added successfully.');
+                newHabitInput.value = '';
+            });
+        }
+        function loadHabitsData() {
+            const habitDailyStoreTransaction = db.transaction(habitDailyStoreName);
+            const habitDailyStore = habitDailyStoreTransaction.objectStore(habitDailyStoreName);
+            habitDailyDataList =[];
+            habitDailyStore.openCursor().onsuccess = function (event) {
+                const cursor = event.target.result;
+                if (cursor) {
+                    var hd = {
+                        id: cursor.value.id,
+                        habitId: cursor.value.habitId,
+                        date: cursor.value.date,
+                        completed: cursor.value.completed,
+                    };
+                    habitDailyDataList.push(hd);
+                    cursor.continue();
+                }
+            };
+        }
+        function loadHabitsMetaData() {
+            const habitMetadataStoreTransaction = db.transaction(habitMetadataStoreName);
+            const habitMetadataObjectStore = habitMetadataStoreTransaction.objectStore(habitMetadataStoreName);
+            habitMetadataList =[];
+            habitMetadataObjectStore.openCursor().onsuccess = function (event) {
+                const cursor = event.target.result;
+
+                if (cursor) {
+                    const habitName = cursor.value.name;
+                    const habitId = cursor.value.id;
+                    const date = cursor.value.date;
+                    habitMetadataList.push({ habitId: habitId, name: habitName, date: date });
+                    cursor.continue();
+                }
+            };
+        }
+        function updateHabitStatus(habitId, isCompleted, date) {
+            // Convert the date to a string in the format 'YYYY-MM-DD'
+            const dateString = date.toISOString().slice(0, 10);
+            const habitDailyTransaction = db.transaction(habitDailyStoreName, 'readwrite');
+            const habitDailyObjectStore = habitDailyTransaction.objectStore(habitDailyStoreName);
+
+            // Check if the record already exists in habitDailyDataList
+            const existingRecord = habitDailyDataList.find(
+                (record) => record.habitId === habitId && record.date.toISOString().slice(0, 10) === dateString
+            );
+
+            if (existingRecord) {
+                existingRecord.completed = isCompleted;
+                habitDailyObjectStore.put(existingRecord);
+            } else {
+                // Add a new record
+                const habitDailyData = { habitId: habitId, date: date, completed: isCompleted };
+                habitDailyObjectStore.add(habitDailyData);
+                habitDailyDataList.push(habitDailyData);
+            }
+            habitDailyTransaction.oncomplete = function () {
+                console.log(`Habit ${habitId} updated: Completed = ${isCompleted}`);
+            };
+        }
+        function getHabitsFromDate(date) {
+            const dateString = date.toISOString().slice(0, 10);
+            const inputDate = new Date(dateString);
+            var tempHabitList = habitMetadataList.filter(x => {
+                const habitDate = new Date(x.date.toISOString().slice(0, 10));
+                return habitDate <= inputDate;
+            });
+            return tempHabitList;
+        }
+        function loadHabitsForDate(date) {
+            const habitTableBody = document.getElementById('habitTableBody');
+            // Clear existing rows in the table
+            habitTableBody.innerHTML = '';
+            const dateString = date.toISOString().slice(0, 10);
+            var hbl = getHabitsFromDate(date);
+            for (let index = 0; index < hbl.length; index++) {
+                const habit = hbl[index];
+
+                const existingRecord = habitDailyDataList.find((record) => record.habitId == habit.habitId && record.date.toISOString().slice(0, 10) === dateString);
+
+                const row = document.createElement('tr');
+
+                // Column 1: Habit name
+                const habitCell = document.createElement('td');
+                habitCell.textContent = habit.name;
+
+                // Column 2: Status toggle switch
+                const statusCell = document.createElement('td');
+                const statusToggle = document.createElement('label');
+                statusToggle.className = 'toggle-switch';
+
+                const inputToggle = document.createElement('input');
+                inputToggle.type = 'checkbox';
+                inputToggle.checked = existingRecord ? existingRecord.completed : false;
+
+                const spanToggle = document.createElement('span');
+                spanToggle.className = 'slider round';
+
+                statusToggle.appendChild(inputToggle);
+                statusToggle.appendChild(spanToggle);
+                inputToggle.addEventListener('change', function () {
+                    updateHabitStatus(habit.habitId, inputToggle.checked, date);
+                });
+                statusCell.appendChild(statusToggle);
+
+                row.appendChild(habitCell);
+                row.appendChild(statusCell);
+                habitTableBody.appendChild(row);
+            }
+
+        }
+
+        function loadMonthData(monthNo, year) {
+            var dateString = year + '-' + monthNo;
+            //var arg = new Date(dateString + '-01');
+            //var hbl = getHabitsFromDate(arg);
+
+            if (habitDailyDataList.filter(r => r.date.toISOString().slice(0, 7) === dateString).length == 0) return;
+            var hbl = habitMetadataList;
+            var tableHtml = `
+                <table id="month-${monthNo}-result">
+                    <thead>
+                        <tr>
+                            <td colspan="33">${dateString}</td>
+                        </tr>
+                        <tr>
+                            <th>Habit</th>
+                            ${Array.from({ length: 31 }, (_, i) => `<th>${i + 1}</th>`).join('')}
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="viewTableBody">
+                ${hbl.map(habit => {
+                // Filter habitDailyDataList for the specific habit and month
+                var monthlyRecoreds = habitDailyDataList.filter(record =>
+                    record.habitId == habit.habitId &&
+                    record.date.toISOString().slice(0, 7) === dateString
+                );
+
+                // Create row data for each habit
+                var rowData = `
+                        <tr>
+                            <td>${habit.name}</td>
+                            ${Array.from({ length: 31 }, (_, i) => {
+                    var dstring = ((i + 1) < 10) ? dateString + `-0${i + 1}` : dateString + `-${i + 1}`;
+                    var dayValue = monthlyRecoreds.find(x => x.date.toISOString().slice(0, 10) === dstring);
+                    return `<td>${( dayValue && dayValue.completed) ? '1' : '.'}</td>`;
+                }).join('')}
+                            <td>${monthlyRecoreds.filter(x => x.completed).length}</td>
+                        </tr>
+                    `;
+                return rowData;
+            }).join('')}
+            </tbody>
+        </table>
+    `;
+
+            var habitTablesDiv = document.getElementById('DynmicHtmlResultTables');
+            habitTablesDiv.innerHTML += tableHtml;
+        }
+
+        function viewHabits(isYear) {
+            const trackMonthYear = document.getElementById('monthSelector');
+            var habitTablesDiv = document.getElementById('DynmicHtmlResultTables');
+            habitTablesDiv.innerHTML = ''; // Clear the existing content
+
+            var selectedDate = trackMonthYear.valueAsDate;
+            if (!selectedDate) {
+                alert('Please select moth.');
+                return;
+            }
+            var dateString = selectedDate.toISOString().slice(0, 10);
+            var spDate = dateString.split('-');
+
+            if (isYear) {
+                for (let index = 1; index <= 12; index++) {
+
+                    loadMonthData(index, spDate[0])
+                }
+            } else {
+                loadMonthData(spDate[1], spDate[0]);
+            }
+        }
+
+        // Event listener for the date control
+        const trackDateInput = document.getElementById('trackDate');
+        trackDateInput.addEventListener('change', function () {
+            if (!isDefalutDataLoaded) {
+                // Load initial data if not loaded yet
+                loadInitialData();
+                isDefalutDataLoaded = true;
+            }
+            const selectedDate = trackDateInput.valueAsDate;
+            loadHabitsForDate(selectedDate);
+        });
+        function clearAllData() {
+
+            var transaction = db.transaction(habitDailyStoreName, 'readwrite');
+            var objectStore = transaction.objectStore(habitDailyStoreName);
+            objectStore.clear();
+
+            transaction = db.transaction(habitMetadataStoreName, 'readwrite');
+            objectStore = transaction.objectStore(habitMetadataStoreName);
+            clearRequest = objectStore.clear();
+
+            clearRequest.onsuccess = function () {
+                alert('All data cleared.');
+            };
+
+            clearRequest.onerror = function (e) {
+                alert('Error clearing data: ' + e.target.error);
+            };
+        }
+        function showTab(tabId) {
+            const tabs = document.querySelectorAll('.tab-content');
+            for (const tab of tabs) {
+                tab.style.display = 'none';
+            }
+
+            const buttons = document.querySelectorAll('.tab-button');
+            for (const button of buttons) {
+                button.classList.remove('active');
+            }
+
+            document.getElementById(tabId).style.display = 'block';
+
+            const activeButton = document.getElementById('b-' + tabId);
+            if (activeButton) {
+                activeButton.classList.add('active');
+            }
+        }
+
+    </script>
+</body>
+
+</html>
